@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Musical Key Are You?</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&family=Space+Grotesk:wght@300;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --xhs-red: #ff2442;
+            --bg-creme: #fcfaf7;
+            --text-main: #333333;
+            --text-muted: #888888;
+        }
+
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background-color: var(--bg-creme);
+            color: var(--text-main);
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .font-sans-custom {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 24px;
+        }
+
+        .btn-xhs {
+            background-color: var(--xhs-red);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .btn-xhs:active {
+            transform: scale(0.96);
+            opacity: 0.9;
+        }
+
+        .option-card {
+            border: 1px solid #eee;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .option-card:active {
+            background-color: #f0f0f0;
+            border-color: var(--xhs-red);
+        }
+
+        .radar-container {
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        #share-card {
+            width: 350px;
+            padding: 40px 30px;
+            background: white;
+            position: absolute;
+            left: -9999px;
+            top: 0;
+        }
+
+        .dot-pattern {
+            background-image: radial-gradient(#e5e5e5 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Landing View -->
+    <div id="view-landing" class="max-w-md w-full text-center space-y-8 fade-in">
+        <div class="space-y-2">
+            <p class="text-xs uppercase tracking-[0.3em] text-gray-400 font-sans-custom">Musical Soul Identity</p>
+            <h1 class="text-4xl font-bold tracking-tight">你的灵魂是什么调性？</h1>
+            <p class="text-gray-500 text-sm leading-relaxed px-8">
+                每一个灵魂都有一段独特的旋律。<br>
+                在音符的律动中，寻找与你共鸣的那个生命基调。
+            </p>
+        </div>
+        <div class="relative py-12">
+            <div class="w-32 h-32 mx-auto bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+            </div>
+        </div>
+        <button onclick="startTest()" class="btn-xhs px-12 py-4 rounded-full text-sm font-medium tracking-widest shadow-lg shadow-red-100">
+            开始测试
+        </button>
+    </div>
+
+    <!-- Question View -->
+    <div id="view-question" class="hidden max-w-md w-full space-y-8 fade-in">
+        <div class="flex justify-between items-end">
+            <span id="q-progress" class="text-xs font-sans-custom text-gray-400">01 / 10</span>
+            <div class="h-[1px] bg-gray-200 flex-grow mx-4 mb-1">
+                <div id="q-progress-bar" class="h-full bg-black transition-all duration-500" style="width: 10%"></div>
+            </div>
+        </div>
+        
+        <h2 id="q-text" class="text-2xl font-medium leading-snug">如果你是一个清晨的梦境，它会是什么颜色？</h2>
+        
+        <div id="options-container" class="space-y-3">
+            <!-- Options injected here -->
+        </div>
+    </div>
+
+    <!-- Result View -->
+    <div id="view-result" class="hidden max-w-md w-full space-y-8 fade-in pb-12">
+        <div class="glass-card p-8 text-center space-y-6 shadow-sm">
+            <p class="text-xs text-gray-400 uppercase tracking-widest">测试报告 · Test Report</p>
+            <div class="space-y-1">
+                <h3 id="res-key-title" class="text-4xl font-bold">C Major</h3>
+                <p id="res-key-subtitle" class="text-lg text-gray-500">晴空叙事型</p>
+            </div>
+
+            <div class="radar-container py-4">
+                <canvas id="resultChart" width="300" height="300"></canvas>
+            </div>
+
+            <div id="api-loading" class="text-xs text-gray-400 py-4 animate-pulse">正在解读你的音乐灵魂...</div>
+            
+            <div id="api-content" class="hidden text-left space-y-4 pt-4 border-t border-gray-100">
+                <p id="res-description" class="text-sm leading-relaxed text-gray-600 italic"></p>
+                <div class="space-y-2">
+                    <p class="text-xs font-bold text-gray-400 uppercase">灵魂共鸣者</p>
+                    <p id="res-writers" class="text-sm text-gray-700"></p>
+                </div>
+                <div class="space-y-2">
+                    <p class="text-xs font-bold text-gray-400 uppercase">背景旋律</p>
+                    <p id="res-music" class="text-sm text-gray-700"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-3">
+            <button onclick="generateImage()" class="btn-xhs w-full py-4 rounded-full text-sm font-medium shadow-md">
+                生成分享卡片
+            </button>
+            <button onclick="restartTest()" class="w-full py-4 rounded-full text-sm font-medium border border-gray-200 text-gray-500 bg-white">
+                重新测试
+            </button>
+        </div>
+    </div>
+
+    <!-- Hidden Share Card for Export -->
+    <div id="share-card" class="dot-pattern">
+        <div class="border-l-4 border-black pl-6 space-y-4">
+            <p class="text-xs tracking-widest text-gray-400 uppercase">My Musical Soul</p>
+            <h1 id="share-key" class="text-5xl font-bold">C Major</h1>
+            <p id="share-subtitle" class="text-2xl text-gray-600 font-light">晴空叙事型</p>
+        </div>
+        <div class="mt-12 pt-8 border-t border-gray-100">
+            <p id="share-desc" class="text-sm leading-relaxed text-gray-500">
+                清澈、明亮、毫无杂质。你的生命调性如同清晨第一缕阳光穿透薄雾，给人以最纯粹的希望与宁静。
+            </p>
+        </div>
+        <div class="mt-20 flex justify-between items-end">
+            <div class="text-[10px] text-gray-300 font-sans-custom">
+                MUSICAL PERSONALITY TEST<br>
+                SCAN TO DISCOVER YOUR TONE
+            </div>
+            <div class="w-12 h-12 bg-black text-white flex items-center justify-center text-[8px]">QR CODE</div>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                q: "在一场漫长的旅行中，你更倾向于选择哪种风景？",
+                options: [
+                    { text: "烈日下的广袤荒漠", score: { energy: 2, warmth: 0, control: 0 } },
+                    { text: "落日余晖中的静谧小镇", score: { energy: 0, warmth: 2, control: 0 } },
+                    { text: "井然有序的现代都市森林", score: { energy: 0, warmth: 0, control: 2 } },
+                    { text: "穿梭在四季交替的铁轨上", score: { energy: 1, warmth: 1, control: 1 } }
+                ]
+            },
+            {
+                q: "当你在咖啡馆坐下，你通常会选择哪个位置？",
+                options: [
+                    { text: "正对着大门的吧台", score: { energy: 2, warmth: 0, control: 0 } },
+                    { text: "有柔软阳光洒入的窗边", score: { energy: 0, warmth: 2, control: 0 } },
+                    { text: "能看清全场动态的角落", score: { energy: 0, warmth: 0, control: 2 } },
+                    { text: "随遇而安，哪里空坐哪里", score: { energy: 1, warmth: 1, control: 1 } }
+                ]
+            },
+            {
+                q: "处理一件棘手的事情时，你的第一反应是？",
+                options: [
+                    { text: "迅速行动，先打破僵局", score: { energy: 2, warmth: 0, control: 0 } },
+                    { text: "寻求他人的理解与支持", score: { energy: 0, warmth: 2, control: 0 } },
+                    { text: "制定详细的逻辑清单", score: { energy: 0, warmth: 0, control: 2 } },
+                    { text: "深呼吸，等待直觉降临", score: { energy: 1, warmth: 1, control: 1 } }
+                ]
+            },
+            {
+                q: "如果人生是一本书，你希望它的基调是？",
+                options: [
+                    { text: "波澜壮阔的史诗", score: { energy: 2, warmth: 0, control: 0 } },
+                    { text: "温暖治愈的散文", score: { energy: 0, warmth: 2, control: 0 } },
+                    { text: "逻辑严密的侦探小说", score: { energy: 0, warmth: 0, control: 2 } },
+                    { text: "充满未知的幻想诗", score: { energy: 1, warmth: 1, control: 1 } }
+                ]
+            },
+            {
+                q: "在派对中，你通常扮演的角色是？",
+                options: [
+                    { text: "气氛带动者，总是站在中心", score: { energy: 2, warmth: 0, control: 0 } },
+                    { text: "倾听者，给需要的人提供安慰", score: { energy: 0, warmth: 2, control: 0 } },
+                    { text: "观察者，默默看众生百态", score: { energy: 0, warmth: 0, control: 2 } },
+                    { text: "流动的社交者，与谁都能聊两句", score: { energy: 1, warmth: 1, control: 1 } }
+                ]
+            },
+            {
+                q: "你如何看待“时间”？",
+                options: [
+                    { text: "是需要去抢夺和利用的资源", score: { energy: 2, warmth: 0, control: 0 } },
+                    { text: "是需要去细细品味的情感载体", score: { energy: 0, warmth: 2, control: 0 } },
+                    { text: "是绝对精确、不容浪费的刻度", score: { energy: 0, warmth: 0, control: 2 } },
+                    { text: "是一个不断循环的圆圈", score: { energy: 1, warmth: 1, control: 1 } }
+                ]
+            },
+            {
+                q: "你会因为什么而爱上一首歌？",
+                options: [
+                    { text: "强烈的节奏与冲击力", score: { energy: 2, warmth: 0, control: 0 } },
+                    { text: "歌词中细腻的情感共鸣", score: { energy: 0, warmth: 2, control: 0 } },
+                    { text: "编曲的精巧与结构美感", score: { energy: 0, warmth: 0, control: 2 } },
+                    { text: "某种说不清的、跨越逻辑的氛围", score: { energy: 1, warmth: 1, control: 1 } }
+                ]
+            },
+            {
+                q: "当你独自一人在雨天，你会做什么？",
+                options: [
+                    { text: "在雨中慢跑或做室内运动", score: { energy: 2, warmth: 0, control: 0 } },
+                    { text: "煮一壶茶，给老朋友发消息", score: { energy: 0, warmth: 2, control: 0 } },
+                    { text: "整理书架或清空电子邮箱", score: { energy: 0, warmth: 0, control: 2 } },
+                    { text: "看着窗外，任由思绪断线", score: { energy: 1, warmth: 1, control: 1 } }
+                ]
+            },
+            {
+                q: "你更向往哪种形式的成功？",
+                options: [
+                    { text: "被世人铭记的辉煌成就", score: { energy: 2, warmth: 0, control: 0 } },
+                    { text: "与所爱之人共享的平静生活", score: { energy: 0, warmth: 2, control: 0 } },
+                    { text: "对自己领域完美的掌控权", score: { energy: 0, warmth: 0, control: 2 } },
+                    { text: "不断突破自我的精神自由", score: { energy: 1, warmth: 1, control: 1 } }
+                ]
+            },
+            {
+                q: "如果给你一种超能力，你选择？",
+                options: [
+                    { text: "瞬移到任何地方", score: { energy: 2, warmth: 0, control: 0 } },
+                    { text: "治愈一切伤痛", score: { energy: 0, warmth: 2, control: 0 } },
+                    { text: "预知未来的确定性", score: { energy: 0, warmth: 0, control: 2 } },
+                    { text: "改变重力的调性", score: { energy: 1, warmth: 1, control: 1 } }
+                ]
+            }
+        ];
+
+        let currentQuestion = 0;
+        let scores = { energy: 0, warmth: 0, control: 0 };
+        const apiKey = "";
+
+        const toneMap = [
+            { id: "C Major", title: "晴空叙事型", desc: "清澈、明亮、毫无杂质。你的生命调性如同清晨第一缕阳光。" },
+            { id: "G Major", title: "远行探索型", desc: "开阔且充满希望。你是那个永远在路上，追逐地平线的旅者。" },
+            { id: "D Major", title: "光明英雄型", desc: "宏大、自信、具有感召力。你生而为光，照亮周围的阴霾。" },
+            { id: "A Minor", title: "流动诗人型", desc: "忧郁中带着优雅。你的灵魂在月光下起舞，感性且深邃。" },
+            { id: "E Minor", title: "孤独旅人型", desc: "克制且略带寒意。你在寂静中寻找真理，灵魂带有旷野的气息。" },
+            { id: "D Minor", title: "哲思深海型", desc: "沉稳、庄重、充满力量。你的思考如深海，静水流深。" },
+            { id: "F Major", title: "温柔叙述型", desc: "包容、亲切。你是那个在秋天午后，给人递上一杯热可可的人。" },
+            { id: "C Minor", title: "理性月光型", desc: "在严谨与激情间挣扎。你有坚硬的外壳，却藏着最沸腾的心。" },
+            { id: "Modulating Soul", title: "转调型", desc: "不可预测，多重人格。你拒绝被定义，在不同的生命乐章中自由跳跃。" }
+        ];
+
+        function startTest() {
+            document.getElementById('view-landing').classList.add('hidden');
+            document.getElementById('view-question').classList.remove('hidden');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const q = questions[currentQuestion];
+            document.getElementById('q-text').innerText = q.q;
+            document.getElementById('q-progress').innerText = `${String(currentQuestion + 1).padStart(2, '0')} / 10`;
+            document.getElementById('q-progress-bar').style.width = `${((currentQuestion + 1) / 10) * 100}%`;
+            
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            q.options.forEach((opt, idx) => {
+                const div = document.createElement('div');
+                div.className = "option-card p-5 rounded-2xl bg-white text-sm hover:border-black";
+                div.innerText = opt.text;
+                div.onclick = () => selectOption(opt.score);
+                container.appendChild(div);
+            });
+        }
+
+        function selectOption(score) {
+            scores.energy += score.energy;
+            scores.warmth += score.warmth;
+            scores.control += score.control;
+            
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                showQuestion();
+            } else {
+                finishTest();
+            }
+        }
+
+        function finishTest() {
+            document.getElementById('view-question').classList.add('hidden');
+            document.getElementById('view-result').classList.remove('hidden');
+            
+            const tone = determineTone();
+            drawChart();
+            fetchAnalysis(tone);
+        }
+
+        function determineTone() {
+            // 5% chance for rare
+            if (Math.random() < 0.05) return toneMap[8];
+
+            const { energy, warmth, control } = scores;
+            let result;
+
+            if (energy >= warmth && energy >= control) {
+                result = energy > 10 ? toneMap[2] : toneMap[1]; // D Major vs G Major
+            } else if (warmth >= energy && warmth >= control) {
+                result = warmth > 10 ? toneMap[6] : toneMap[0]; // F Major vs C Major
+            } else if (control >= energy && control >= warmth) {
+                result = control > 10 ? toneMap[7] : toneMap[5]; // C Minor vs D Minor
+            } else {
+                result = energy < 5 ? toneMap[4] : toneMap[3]; // E Minor vs A Minor
+            }
+
+            document.getElementById('res-key-title').innerText = result.id;
+            document.getElementById('res-key-subtitle').innerText = result.title;
+            
+            // Set share card data
+            document.getElementById('share-key').innerText = result.id;
+            document.getElementById('share-subtitle').innerText = result.title;
+            document.getElementById('share-desc').innerText = result.desc;
+
+            return result;
+        }
+
+        async function fetchAnalysis(tone) {
+            const payload = {
+                energy: scores.energy,
+                warmth: scores.warmth,
+                control: scores.control,
+                tone: tone.id
+            };
+
+            const systemPrompt = "You are a poetic musical psychologist. Based on the scores and the musical key provided, write a 3-sentence beautiful, literary description in Chinese. Also provide 2-3 writers and 2-3 musical pieces that match this vibe.";
+            const userQuery = `Dimension scores: Energy ${payload.energy}, Warmth ${payload.warmth}, Control ${payload.control}. Musical Key: ${payload.tone} (${tone.title}).`;
+
+            let retries = 0;
+            const maxRetries = 5;
+
+            const callAPI = async () => {
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: userQuery }] }],
+                            systemInstruction: { parts: [{ text: systemPrompt }] },
+                            generationConfig: {
+                                responseMimeType: "application/json",
+                                responseSchema: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        explanation: { type: "STRING" },
+                                        writers: { type: "ARRAY", items: { type: "STRING" } },
+                                        music: { type: "ARRAY", items: { type: "STRING" } }
+                                    }
+                                }
+                            }
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('API Error');
+                    const data = await response.json();
+                    const result = JSON.parse(data.candidates[0].content.parts[0].text);
+                    displayAnalysis(result);
+                } catch (err) {
+                    if (retries < maxRetries) {
+                        retries++;
+                        setTimeout(callAPI, Math.pow(2, retries) * 500);
+                    } else {
+                        displayAnalysis({
+                            explanation: tone.desc,
+                            writers: ["赫尔曼·黑塞", "兰波"],
+                            music: ["Bach - Cello Suite No.1", "Debussy - Clair de Lune"]
+                        });
+                    }
+                }
+            };
+
+            callAPI();
+        }
+
+        function displayAnalysis(data) {
+            document.getElementById('api-loading').classList.add('hidden');
+            document.getElementById('api-content').classList.remove('hidden');
+            document.getElementById('res-description').innerText = data.explanation;
+            document.getElementById('res-writers').innerText = data.writers.join(' / ');
+            document.getElementById('res-music').innerText = data.music.join(' / ');
+        }
+
+        function drawChart() {
+            const canvas = document.getElementById('resultChart');
+            const ctx = canvas.getContext('2d');
+            const center = 150;
+            const radius = 100;
+            
+            // Normalize scores (assuming max around 20)
+            const maxVal = 20;
+            const s = {
+                energy: (scores.energy / maxVal) * radius,
+                warmth: (scores.warmth / maxVal) * radius,
+                control: (scores.control / maxVal) * radius
+            };
+
+            // Axes positions
+            const getPos = (angle, len) => ({
+                x: center + Math.cos(angle) * len,
+                y: center + Math.sin(angle) * len
+            });
+
+            const angles = [-Math.PI/2, Math.PI/6, 5*Math.PI/6]; // 12, 4, 8 o'clock
+            
+            ctx.clearRect(0,0,300,300);
+
+            // Draw Web
+            ctx.strokeStyle = "#eee";
+            ctx.setLineDash([2, 2]);
+            [0.2, 0.4, 0.6, 0.8, 1].forEach(m => {
+                ctx.beginPath();
+                ctx.moveTo(center + radius * m * Math.cos(angles[0]), center + radius * m * Math.sin(angles[0]));
+                ctx.lineTo(center + radius * m * Math.cos(angles[1]), center + radius * m * Math.sin(angles[1]));
+                ctx.lineTo(center + radius * m * Math.cos(angles[2]), center + radius * m * Math.sin(angles[2]));
+                ctx.closePath();
+                ctx.stroke();
+            });
+
+            // Draw Shape
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(center + s.energy * Math.cos(angles[0]), center + s.energy * Math.sin(angles[0]));
+            ctx.lineTo(center + s.warmth * Math.cos(angles[1]), center + s.warmth * Math.sin(angles[1]));
+            ctx.lineTo(center + s.control * Math.cos(angles[2]), center + s.control * Math.sin(angles[2]));
+            ctx.closePath();
+            ctx.fillStyle = "rgba(255, 36, 66, 0.2)";
+            ctx.fill();
+            ctx.strokeStyle = "#ff2442";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = "#888";
+            ctx.font = "10px Space Grotesk";
+            ctx.textAlign = "center";
+            ctx.fillText("ENERGY", center, center - radius - 15);
+            ctx.fillText("WARMTH", center + radius + 10, center + radius/2 + 10);
+            ctx.fillText("CONTROL", center - radius - 10, center + radius/2 + 10);
+        }
+
+        async function generateImage() {
+            const card = document.getElementById('share-card');
+            // Temporarily reveal to capture
+            card.style.left = "0";
+            card.style.position = "relative";
+            
+            try {
+                const canvas = await html2canvas(card, {
+                    backgroundColor: "#ffffff",
+                    scale: 2
+                });
+                const link = document.createElement('a');
+                link.download = 'my-musical-soul.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            } finally {
+                card.style.left = "-9999px";
+                card.style.position = "absolute";
+            }
+        }
+
+        function restartTest() {
+            currentQuestion = 0;
+            scores = { energy: 0, warmth: 0, control: 0 };
+            document.getElementById('view-result').classList.add('hidden');
+            document.getElementById('view-landing').classList.remove('hidden');
+            document.getElementById('api-content').classList.add('hidden');
+            document.getElementById('api-loading').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
